@@ -312,6 +312,7 @@ local function init_kernel(kernelname)
 
     -- Fallback to legacy remote plugin for users with existing manifest
     local success, result = pcall(fn.InitKernel, kernelname)
+    vim.notify("PYROLA: DEV")
     if not success then
         if string.find(result, "No such kernel") then
             offer_kernel_install(nil, kernelname)
@@ -1095,6 +1096,19 @@ function M.send_buffer_to_repl()
         api.nvim_set_current_win(current_winid)
     end
 end
+
+function M.interrupt_kernel()
+    if not (M.filetype and M.connection_file_path) then 
+        return "Not running"
+    end
+    local result = fn.InterruptKernel(M.connection_file_path)
+    local current_winid = M.term.winid
+    if api.nvim_win_is_valid(current_winid) then
+        api.nvim_set_current_win(current_winid)
+    end
+    return result
+end
+
 
 local function handle_cursor_move()
     local row = api.nvim_win_get_cursor(0)[1]
