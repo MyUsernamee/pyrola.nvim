@@ -960,6 +960,14 @@ function M.setup(opts)
                 M.interrupt_kernel()
                 return
             end
+            if cmd.args == "restart" then
+                if not M.filetype or not M.connection_file then
+                    vim.notify("Pyrola: no kernel running.")
+                    return
+                end
+                M.restart_kernel()
+                return
+            end
             vim.notify("Pyrola: Unknown command. Try :Pyrola init or :Pyrola setup", vim.log.levels.WARN)
         end, {
             nargs = 1,
@@ -1103,13 +1111,21 @@ end
 
 function M.interrupt_kernel()
     if not (M.filetype and M.connection_file_path) then 
-        return "Not running"
+        return
     end
     local result = fn.InterruptKernel(M.connection_file_path)
     local current_winid = M.term.winid
     if api.nvim_win_is_valid(current_winid) then
         api.nvim_set_current_win(current_winid)
     end
+    return result
+end
+
+function M.restart_kernel()
+    if not (M.filetype and M.connection_file_path) then 
+        return
+    end
+    local result = fn.RestartKernel(M.connection_file_path)
     return result
 end
 

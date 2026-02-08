@@ -42,6 +42,28 @@ class PyrolaPlugin:
         self.client = None
         self._connection_file = None
 
+    @pynvim.function("RestartKernel", sync=True)
+    def restart_kernel(self, args):
+        """Restarts the given kernel."""
+        if len(args) < 1:
+            self.nvim.err_write("Pyrola: missing connection_file.")
+            return None
+
+        connection_file, = args
+
+        try:
+            if not self._connect_kernel(connection_file):
+                return "Error: Failed to connect to kernel"
+
+            self.kernel_manager.restart_kernel()
+
+            return None
+        except Exception as exc:
+            print(f"Execution error: {exc}")
+            return f"Execution error: {exc}"
+        finally:
+            self._disconnect_client()
+
     @pynvim.function("InterruptKernel", sync=True)
     def interrupt_kernel(self, args):
         """Send a interrupt to the current kernel."""
