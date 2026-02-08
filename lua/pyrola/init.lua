@@ -961,11 +961,19 @@ function M.setup(opts)
                 return
             end
             if cmd.args == "restart" then
-                if not M.filetype or not M.connection_file then
+                if not M.filetype or not M.connection_file_path then
                     vim.notify("Pyrola: no kernel running.")
                     return
                 end
-                M.restart_kernel()
+                vim.notify("Pyrola: kernel restarting...")
+                local result = M.restart_kernel()
+
+                if result ~= vim.NIL and not result then
+                    vim.notify("Pyrola: error restarting kernel. " .. tostring(result))
+                    return
+                end
+
+                vim.notify("Pyrola: kernel restarted!")
                 return
             end
             vim.notify("Pyrola: Unknown command. Try :Pyrola init or :Pyrola setup", vim.log.levels.WARN)
