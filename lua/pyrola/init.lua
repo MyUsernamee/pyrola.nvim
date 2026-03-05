@@ -312,7 +312,6 @@ local function init_kernel(kernelname)
 
     -- Fallback to legacy remote plugin for users with existing manifest
     local success, result = pcall(fn.InitKernel, kernelname)
-    vim.notify("PYROLA: DEV")
     if not success then
         if string.find(result, "No such kernel") then
             offer_kernel_install(nil, kernelname)
@@ -796,9 +795,10 @@ local function check_and_install_dependencies(python_executable)
     end
 
     local check_cmd = { python_executable, "-c", build_import_check() }
-    fn.system(check_cmd)
+    local output = fn.system(check_cmd)
 
     if vim.v.shell_error ~= 0 then
+        vim.notify(output)
         local pip_path = fn.system({python_executable, "-m", "pip", "--version"}):gsub("\n", "")
         local install_path = fn.system({
             python_executable,

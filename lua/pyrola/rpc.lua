@@ -46,6 +46,7 @@ function M.start(python_executable, plugin_path)
             if not data then
                 return
             end
+<<<<<<< HEAD
             for i, chunk in ipairs(data) do
                 local is_last = i == #data
                 if is_last and chunk ~= "" then
@@ -54,6 +55,20 @@ function M.start(python_executable, plugin_path)
                     local line = _stdout_buf .. chunk
                     _stdout_buf = ""
                     handle_stdout_line(line)
+=======
+            for _, line in ipairs(data) do -- jobstart only receives complete lines.
+                _stdout_buf = _stdout_buf .. line
+                if line ~= "" then
+                    local ok, resp = pcall(vim.json.decode, line)
+                    if ok and resp and resp.id ~= nil then
+                        local cb = _pending[resp.id]
+                        if cb then
+                            cb.result = resp.result
+                            cb.err = resp.error
+                            cb.done = true
+                        end
+                    end
+>>>>>>> 44e2e4b (Fix rpc bug)
                 end
             end
         end,
