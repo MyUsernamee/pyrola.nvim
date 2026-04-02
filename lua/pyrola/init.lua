@@ -3,6 +3,8 @@ local rpc = require("pyrola.rpc")
 
 local DEPS = {
     { pip = "jupyter-client", import = "jupyter_client" },
+    { pip = "ipython", import = "IPython" },
+    { pip = "pynvim", import = "pynvim" },
     { pip = "prompt-toolkit", import = "prompt_toolkit" },
     { pip = "pillow",         import = "PIL" },
     { pip = "pygments",       import = "pygments" },
