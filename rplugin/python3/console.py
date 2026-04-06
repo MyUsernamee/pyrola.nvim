@@ -362,13 +362,18 @@ class ReplInterpreter:
                             code = "\n".join(self.buffer + [code])
                             self.buffer.clear()
                         self.in_multiline = False
-                        await self.handle_execute(code)
+                        task = asyncio.create_task(self.handle_execute(code))
+                        try:
+                            await asyncio.shield(task)
+                        except asyncio.CancelledError:
+
+                            continue
+
 
             except KeyboardInterrupt:
                 self.in_multiline = False
                 self.buffer.clear()
                 continue
-
             except EOFError:
                 break
 
@@ -497,6 +502,8 @@ class ReplInterpreter:
                 except Empty:
                     await asyncio.sleep(0.05)
 
+        except KeyboardInterrupt:
+            pass 
         finally:
             self._executing = False
             self._interrupt_requested = False
@@ -521,6 +528,7 @@ class ReplInterpreter:
 
     def interact(self, banner: Optional[str] = None):
         asyncio.run(self.interact_async(banner))
+
 
     def _nvim_worker(self):
         """Worker thread for handling Neovim communications"""
