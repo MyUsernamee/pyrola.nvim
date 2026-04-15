@@ -41,7 +41,7 @@ function M.start(python_executable, plugin_path)
     _stderr_buf = ""
     local server_script = plugin_path .. "/rplugin/python3/server.py"
     _job_id = fn.jobstart({ python_executable, server_script }, {
-        cwd = plugin_path .. "/rplugin/python3",
+        cwd = vim.fn.getcwd(),
         on_stdout = function(_, data, _)
             if not data then
                 return
