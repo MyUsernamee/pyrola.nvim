@@ -1099,9 +1099,9 @@ function M.send_visual_to_repl()
     api.nvim_feedkeys(api.nvim_replace_termcodes("<Esc>", true, false, true), "n", false)
 end
 
-function M.execute(code) 
+function M.send(code)
     --[[
-    -- Executes some code in the REPL environment.
+    -- Sends some code in the REPL environment.
     -- @returns True if the code was sent
     --]]
     if not repl_ready() then
