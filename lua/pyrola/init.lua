@@ -956,6 +956,10 @@ function M.setup(opts)
                 M.setup_environment()
                 return
             end
+            if cmd.args == "interrupt" then
+                M.interrupt_kernel()
+                return
+            end
             vim.notify("Pyrola: Unknown command. Try :Pyrola init or :Pyrola setup", vim.log.levels.WARN)
         end, {
             nargs = 1,
@@ -1108,7 +1112,6 @@ function M.interrupt_kernel()
     end
     return result
 end
-
 
 local function handle_cursor_move()
     local row = api.nvim_win_get_cursor(0)[1]
