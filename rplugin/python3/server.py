@@ -102,6 +102,7 @@ class PyrolaServer:
             "r": "Pyrola R",
             "cpp": "Pyrola C++",
             "julia": "Pyrola Julia",
+            "sage": "Pyrola SageMath",
         }
         return display_names.get(filetype, f"Pyrola {filetype}")
 
@@ -217,6 +218,35 @@ class PyrolaServer:
             "display_name": self._managed_display_name("python"),
             "source": sys.executable,
         }
+
+    def _ensure_sagemath_kernel(self, name):
+        self._ensure_python_ipykernel()
+        spec_data = {
+            "argv": [
+                sys.executable,
+                "-m",
+                "ipykernel_launcher",
+                "-f",
+                "{connection_file}",
+            ],
+            "display_name": self._managed_display_name("sage"),
+            "language": "sage",
+            "metadata": {
+                "debugger": True,
+                "pyrola": {"managed": True, "source_python": sys.executable},
+            },
+        }
+        source_name = self._find_candidate_kernel(exact=["sagemath"], exclude={name})
+        source_dir = None
+        if source_name:
+            _, source_dir = self._load_kernel_spec(source_name)
+        self._write_kernel_spec(name, spec_data, source_dir=source_dir)
+        return {
+            "kernel_name": name,
+            "display_name": self._managed_display_name("sage"),
+            "source": sys.executable,
+        }
+
 
     def _ensure_r_kernel(self, name, runtime_command):
         if not runtime_command:
@@ -387,6 +417,9 @@ class PyrolaServer:
             if runtime_command:
                 return self._ensure_julia_kernel_from_runtime(name, runtime_command)
             return self._ensure_julia_kernel(name)
+        if filetype == "sage":
+            return self._ensure_sagemath_kernel(name)
+
         raise ValueError(f"unsupported auto-managed kernel: {filetype}")
 
     def init_kernel(self, params):

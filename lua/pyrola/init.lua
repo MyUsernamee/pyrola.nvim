@@ -12,6 +12,7 @@ local DEPS = {
 
 local AUTO_KERNEL_NAMES = {
     python = "pyrola_python",
+    sage = "pyrola_sage",
     r = "pyrola_r",
     cpp = "pyrola_cpp",
     julia = "pyrola_julia",
