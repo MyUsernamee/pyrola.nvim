@@ -1,3 +1,5 @@
+-- Provides helper functions for displaying images
+
 local M = {}
 
 local api = vim.api
@@ -204,6 +206,7 @@ local function get_window_screenpos(winid)
     return row, col
 end
 
+-- Sends low-res ascii image chunks to terminal.
 local function send_image_chunks(control_str, chunks, x, y, restore_row, restore_col)
     if #chunks == 0 then
         return
@@ -223,14 +226,16 @@ local function send_image_chunks(control_str, chunks, x, y, restore_row, restore
         return
     end
 
-    write(string.format("\x1b[%d;%dH", y, x))
+    write(string.format("\x1b[%d;%dH", y, x)) -- Move cursor to this position.
+
     for i = 1, #chunks do
-        local chunk_control = control_str .. ",m=" .. (i < #chunks and "1" or "0")
-        local cmd = string.format("\x1b_G%s;%s\x1b\\", chunk_control, chunks[i])
+        local chunk_control = control_str .. ",m=" .. (i < #chunks and "1" or "0") -- Tell term we are going to send image chunk
+        local cmd = string.format("\x1b_G%s;%s\x1b\\", chunk_control, chunks[i]) -- Send data
         write(cmd)
     end
+
     if restore_row and restore_col then
-        write(string.format("\x1b[%d;%dH", restore_row, restore_col))
+        write(string.format("\x1b[%d;%dH", restore_row, restore_col)) -- Move cursor back to where we were
     end
 end
 
