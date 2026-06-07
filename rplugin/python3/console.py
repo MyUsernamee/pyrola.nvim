@@ -66,7 +66,7 @@ def _gradient_ansi_lines(lines, start, end_color):
         colored.append(f"\x1b[38;2;{r};{g};{b}m{line}\x1b[0m")
     return "\n".join(colored)
 
-def _generate_ext_mark(img_id, rows, columns) :
+def _generate_ext_mark(img_id, rows, columns):
     extmark = ""
 
     for row in range(rows):
@@ -808,8 +808,9 @@ class ReplInterpreter:
 
                         try:
                             term_size = shutil.get_terminal_size()
+                            print(term_size)
                             img_id = randint(0, 1<<24) # Generate unique id for image
-                            rows =  term_size.columns
+                            rows = int(term_size.columns * (24/80))
                             columns = term_size.columns
                             ext_mark = _generate_ext_mark(img_id, rows, columns)
                             sys.stdout.buffer.write(ext_mark.encode())

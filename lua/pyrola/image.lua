@@ -207,8 +207,7 @@ local function get_window_screenpos(winid)
     return row, col
 end
 
--- Sends low-res ascii image chunks to terminal.
-local function send_image_chunks(control_str, chunks, x, y, restore_row, restore_col)
+local function send_image_chunks(control_str, chunks, restore_row, restore_col)
     if #chunks == 0 then
         return
     end
@@ -216,7 +215,6 @@ local function send_image_chunks(control_str, chunks, x, y, restore_row, restore
         for i = 1, #chunks do
             local chunk_control = control_str .. ",m=" .. (i < #chunks and "1" or "0")
             local parts = {
-                string.format("\x1b[%d;%dH", y, x),
                 string.format("\x1b_G%s;%s\x1b\\", chunk_control, chunks[i])
             }
             if i == #chunks and restore_row and restore_col then
@@ -226,8 +224,6 @@ local function send_image_chunks(control_str, chunks, x, y, restore_row, restore
         end
         return
     end
-
-    write(string.format("\x1b[%d;%dH", y, x)) -- Move cursor to this position.
 
     for i = 1, #chunks do
         local chunk_control = control_str .. ",m=" .. (i < #chunks and "1" or "0") -- Tell term we are going to send image chunk
@@ -447,8 +443,7 @@ local function set_manager_keymaps(bufnr)
     end, opts)
 end
 
-local function draw_image(id, base64_data, width, height, winid, float_row, float_col, float_width, float_height)
-    vim.print(id)
+local function show_image_placement(id, winid, float_row, float_col, float_width, float_height)
     if not api.nvim_win_is_valid(winid) then
         return
     end
@@ -463,7 +458,18 @@ local function draw_image(id, base64_data, width, height, winid, float_row, floa
     end
     base_row = base_row + row_offset + row_adjust
     base_col = base_col + col_offset + col_adjust
-    local x, y = get_image_position(base_row, base_col, float_width, float_height, width, height)
+
+    local proto = get_effective_protocol()
+    if proto == "iterm2" then
+        return -- Sorry, use main branch.
+    else
+        -- TODO
+    end
+end
+
+local function draw_image(id, base64_data, width, height)
+    local cursor_row, cursor_col = get_cursor_screenpos_raw()
+    local row_offset, col_offset = get_tmux_offset(cursor_row, cursor_col)
 
     local restore_row, restore_col = nil, nil
     if cursor_row and cursor_col then
@@ -473,25 +479,23 @@ local function draw_image(id, base64_data, width, height, winid, float_row, floa
 
     local proto = get_effective_protocol()
     if proto == "iterm2" then
-        local width_cells = pixels_to_cells(width, true)
-        local height_cells = pixels_to_cells(height, false)
-        send_iterm2_image(base64_data, width_cells, height_cells, x, y, restore_row, restore_col)
+        return -- Sorry, use main branch
     else
         local control = {
             a = "T", -- Transmit and display
             f = 100, -- PNG format
             t = "d", -- Direct transmission
-            -- q = 2, -- Quiet mode
+            q = 2, -- Quiet mode
             i = id, -- Image ID
             C = 1, -- Don't move cursor
             U = 1,
-            c = 16,
-            r = 16,
+            w = width,
+            h = height,
         }
 
         local control_str = build_control_string(control)
         local chunks = get_chunked(base64_data)
-        send_image_chunks(control_str, chunks, x, y, restore_row, restore_col)
+        send_image_chunks(control_str, chunks, restore_row, restore_col)
     end
 end
 
@@ -517,26 +521,15 @@ local function display_image(id, base64_data, width, height, record_history, foc
         push_history({data = base64_data, width = width, height = height})
     end
 
-    if M.current_winid and api.nvim_win_is_valid(M.current_winid) then
-        api.nvim_win_close(M.current_winid, true)
-    end
-
-    local winid, bufnr, float_row, float_col, float_width, float_height =
-        create_image_float(width, height, focus)
-    M.current_winid = winid
-
     -- Store image state for focus restore
     M.current_image_data = base64_data
     M.current_image_width = width
     M.current_image_height = height
     M.current_image_id = id
-    M.current_float_pos = {winid = winid, row = float_row, col = float_col, width = float_width, height = float_height}
 
     vim.defer_fn(function()
-        if M.current_winid ~= winid then
-            return
-        end
-        draw_image(id, base64_data, width, height, winid, float_row, float_col, float_width, float_height)
+        draw_image(id, base64_data, width, height)
+        -- show_image_placement(id, winid, float_row, float_col, float_width, float_height)
     end, 20)
     if focus then
         M.manager_winid = winid
