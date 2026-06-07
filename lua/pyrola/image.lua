@@ -59,6 +59,7 @@ M.manager_winid = nil
 M.manager_bufid = nil
 M.manager_active = false
 M.manager_guicursor = nil
+M.current_image_id = 0
 
 local MAX_HISTORY = 50
 local MAX_HISTORY_BYTES = 50 * 1024 * 1024 -- 50 MB cap
@@ -446,7 +447,8 @@ local function set_manager_keymaps(bufnr)
     end, opts)
 end
 
-local function draw_image(base64_data, width, height, winid, float_row, float_col, float_width, float_height)
+local function draw_image(id, base64_data, width, height, winid, float_row, float_col, float_width, float_height)
+    vim.print(id)
     if not api.nvim_win_is_valid(winid) then
         return
     end
@@ -479,11 +481,12 @@ local function draw_image(base64_data, width, height, winid, float_row, float_co
             a = "T", -- Transmit and display
             f = 100, -- PNG format
             t = "d", -- Direct transmission
-            q = 2, -- Quiet mode
-            i = 1, -- Image ID
+            -- q = 2, -- Quiet mode
+            i = id, -- Image ID
             C = 1, -- Don't move cursor
-            w = width, -- Image width
-            h = height -- Image height
+            U = 1,
+            c = 16,
+            r = 16,
         }
 
         local control_str = build_control_string(control)
@@ -492,7 +495,7 @@ local function draw_image(base64_data, width, height, winid, float_row, float_co
     end
 end
 
-local function display_image(base64_data, width, height, record_history, focus, auto_clear)
+local function display_image(id, base64_data, width, height, record_history, focus, auto_clear)
     refresh_image_config()
     if not stdout then
         vim.notify("Pyrola: Image display disabled (no TTY available).", vim.log.levels.WARN)
@@ -526,13 +529,14 @@ local function display_image(base64_data, width, height, record_history, focus, 
     M.current_image_data = base64_data
     M.current_image_width = width
     M.current_image_height = height
+    M.current_image_id = id
     M.current_float_pos = {winid = winid, row = float_row, col = float_col, width = float_width, height = float_height}
 
     vim.defer_fn(function()
         if M.current_winid ~= winid then
             return
         end
-        draw_image(base64_data, width, height, winid, float_row, float_col, float_width, float_height)
+        draw_image(id, base64_data, width, height, winid, float_row, float_col, float_width, float_height)
     end, 20)
     if focus then
         M.manager_winid = winid
@@ -569,6 +573,7 @@ local function redraw_image()
             return
         end
         draw_image(
+            M.current_image_data,
             M.current_image_data,
             M.current_image_width,
             M.current_image_height,
@@ -637,11 +642,13 @@ end
 setup_global_autocmds()
 
 -- Main function to display image
-function M.show_image(base64_data, width, height)
-    display_image(base64_data, width, height, true, false, true)
+function M.show_image(id, base64_data, width, height)
+    return display_image(id, base64_data, width, height, true, false, true)
 end
 
-function M.show_image_file(path, width, height)
+function M.show_image_file(id, path, width, height)
+    vim.print(id)
+    vim.print(path)
     if type(path) ~= "string" or path == "" then
         vim.notify("Pyrola: Image path missing or invalid.", vim.log.levels.WARN)
         return
@@ -651,7 +658,7 @@ function M.show_image_file(path, width, height)
         vim.notify("Pyrola: Image file empty or unreadable.", vim.log.levels.WARN)
         return
     end
-    display_image(content, width, height, true, false, true)
+    display_image(id, content, width, height, true, false, true)
 end
 
 local function show_history_at(index, focus)

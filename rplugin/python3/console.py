@@ -1,4 +1,10 @@
+from random import randint, random
+import traceback
 import sys
+
+from numpy.random import random_integers
+
+from unicode_diacritics import IMAGE_UNICODE_DIACRITICS
 
 sys.dont_write_bytecode = True
 
@@ -30,6 +36,7 @@ from prompt_toolkit.shortcuts import PromptSession
 from prompt_toolkit.styles import Style
 from pygments.lexers import CppLexer, Python3Lexer, TextLexer
 from pygments.lexers.r import SLexer
+from unicode_diacritics import *
 
 IMAGE_MIME_MAP = {
     "image/png": "png",
@@ -37,7 +44,9 @@ IMAGE_MIME_MAP = {
     "image/svg+xml": "svg",
 }
 IMAGE_MIME_TYPES = tuple(IMAGE_MIME_MAP.keys())
-
+IMAGE_ID_MAX = 4294967295
+IMAGE_UNICODE_PLACEHOLDER = "\U0010EEEE"
+IMAGE_UNICODE_1 = "\u0305"
 
 def _gradient_ansi_lines(lines, start, end_color):
     if not lines:
@@ -56,6 +65,20 @@ def _gradient_ansi_lines(lines, start, end_color):
     for line, (r, g, b) in zip(lines, colors):
         colored.append(f"\x1b[38;2;{r};{g};{b}m{line}\x1b[0m")
     return "\n".join(colored)
+
+def _generate_ext_mark(img_id, rows, columns) :
+    extmark = ""
+
+    for row in range(rows):
+        for column in range(columns):
+            r = (img_id >> 8*2) & (2**8-1)
+            g = (img_id >> 8*1) & (2**8-1)
+            b = (img_id >> 8*0) & (2**8-1)
+            extmark += f"\x1b[38;2;{r};{g};{b}m{IMAGE_UNICODE_PLACEHOLDER}"
+            extmark += f"{IMAGE_UNICODE_DIACRITICS[row]}{IMAGE_UNICODE_DIACRITICS[column]}\x1b[39m" 
+        extmark += "\n"
+
+    return extmark.strip()
 
 
 def _extract_image_data(value):
@@ -560,6 +583,8 @@ class ReplInterpreter:
                     if kind != "image":
                         continue
 
+                    img_id, payload = payload
+
                     if not self._ensure_nvim():
                         continue
                     try:
@@ -652,9 +677,7 @@ class ReplInterpreter:
                                 self.nvim.command(
                                     f"let g:pyrola_image_height = {int(new_height)}"
                                 )
-                                self.nvim.command(
-                                    'lua require("pyrola.image").show_image_file(vim.g.pyrola_image_path, vim.g.pyrola_image_width, vim.g.pyrola_image_height)'
-                                )
+                                self.nvim.exec_lua(f"require('pyrola.image').show_image_file({img_id}, vim.g.pyrola_image_path, vim.g.pyrola_image_width, vim.g.pyrola_image_height)")
                                 self.nvim.command("unlet g:pyrola_image_path")
                                 self.nvim.command("unlet g:pyrola_image_width")
                                 self.nvim.command("unlet g:pyrola_image_height")
@@ -704,6 +727,7 @@ class ReplInterpreter:
             except Exception:
                 pass
             self._temp_dir = None
+
 
     async def handle_iopub_msgs(self, msg_id):
         while self.client.iopub_channel.msg_ready():
@@ -783,39 +807,23 @@ class ReplInterpreter:
                         self._register_temp_path(tmp_path)
 
                         try:
-                            # Get terminal size explicitly since prompt_toolkit
-                            # may prevent timg from detecting it
                             term_size = shutil.get_terminal_size()
-                            size_arg = f"-g{term_size.columns}x{term_size.lines}"
-                            proc = await asyncio.create_subprocess_exec(
-                                "timg", "-p", "q", size_arg, tmp_path,
-                                stdout=asyncio.subprocess.PIPE,
-                                stderr=asyncio.subprocess.PIPE,
-                            )
-                            try:
-                                stdout_data, stderr_data = await asyncio.wait_for(
-                                    proc.communicate(), timeout=15
-                                )
-                            except asyncio.TimeoutError:
-                                proc.kill()
-                                await proc.wait()
-                                print("timg timed out (15s)", file=sys.stderr)
-                                continue
-                            if stdout_data:
-                                sys.stdout.buffer.write(stdout_data)
-                                sys.stdout.flush()
-                            if proc.returncode != 0:
-                                raise subprocess.CalledProcessError(proc.returncode, "timg")
+                            img_id = randint(0, 1<<24) # Generate unique id for image
+                            rows =  term_size.columns
+                            columns = term_size.columns
+                            ext_mark = _generate_ext_mark(img_id, rows, columns)
+                            sys.stdout.buffer.write(ext_mark.encode())
+
                             if image_mime == "image/png" and self._nvim_address:
                                 self._start_nvim_thread()
-                                self.nvim_queue.put(("image", image_data))
+                                self.nvim_queue.put(("image", (img_id, image_data)))
                         except (
                             subprocess.CalledProcessError,
                             FileNotFoundError,
                         ) as e:
-                            print(f"Failed to display image: {e}")
+                            print(f"Failed to display image: {traceback.format_exc()}")
                     except Exception as e:
-                        print(f"Error handling image: {e}")
+                        print(f"Error handling image: {traceback.format_exc()}")
                     finally:
                         if tmp_path:
                             self._cleanup_temp_path(tmp_path)
