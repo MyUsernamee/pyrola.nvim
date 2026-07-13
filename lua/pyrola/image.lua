@@ -640,8 +640,6 @@ function M.show_image(id, base64_data, width, height)
 end
 
 function M.show_image_file(id, path, width, height)
-    vim.print(id)
-    vim.print(path)
     if type(path) ~= "string" or path == "" then
         vim.notify("Pyrola: Image path missing or invalid.", vim.log.levels.WARN)
         return

@@ -48,6 +48,8 @@ IMAGE_ID_MAX = 4294967295
 IMAGE_UNICODE_PLACEHOLDER = "\U0010EEEE"
 IMAGE_UNICODE_1 = "\u0305"
 
+FONT_ASPECT_RATIO = 24.0/80.0 * (4.0/3.0) # We assume the aspect ratio for the terminal is about 1.4 height to width
+
 def _gradient_ansi_lines(lines, start, end_color):
     if not lines:
         return ""
@@ -642,6 +644,14 @@ class ReplInterpreter:
                             (new_width, new_height), Image.Resampling.LANCZOS
                         )
 
+
+                        term_size = shutil.get_terminal_size()
+                        img_size = (new_width, new_height)
+                        columns = int(min(term_size.columns, img_size[0] / self._cell_width))
+                        rows = int(img_size[1] / self._cell_height)
+                        ext_mark = _generate_ext_mark(img_id, rows, columns)
+                        sys.stdout.buffer.write(ext_mark.encode())
+
                         # Convert back to base64
                         buffer = io.BytesIO()
                         img.save(buffer, format="PNG")
@@ -807,15 +817,13 @@ class ReplInterpreter:
                         self._register_temp_path(tmp_path)
 
                         try:
-                            term_size = shutil.get_terminal_size()
-                            print(term_size)
                             img_id = randint(0, 1<<24) # Generate unique id for image
-                            rows = int(term_size.columns * (24/80))
-                            columns = term_size.columns
-                            ext_mark = _generate_ext_mark(img_id, rows, columns)
-                            sys.stdout.buffer.write(ext_mark.encode())
 
                             if image_mime == "image/png" and self._nvim_address:
+
+
+
+
                                 self._start_nvim_thread()
                                 self.nvim_queue.put(("image", (img_id, image_data)))
                         except (
