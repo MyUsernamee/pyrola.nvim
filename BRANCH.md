@@ -12,4 +12,4 @@ goal:
 Add unique ids to every image. (done)
 Unicode place holder. (done)
 Multi image placement? (Might remove because having images in the out defeats the purpose lowkey)
-Get image width and height in python, and place proper ammount of extmarks
+Get image width and height in python, and place proper amount of extmarks
